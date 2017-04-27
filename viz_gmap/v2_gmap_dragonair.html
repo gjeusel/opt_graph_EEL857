@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
+  <meta charset="utf-8">
+  <script type="text/javascript" src="utils.js" ></script>
+  <title>San Fransisco Dragonair Hunt</title>
+
+  <style>
+<!--{{{-->
+    /* Always set the map height explicitly to define the size of the div
+     * element that contains the map. */
+    #map {
+       height: 100%;
+       width: 70%;
+    }
+    /* Optional: Makes the sample page fill the window. */
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+    }
+    #right-panel {
+            font-family: 'Roboto','sans-serif';
+            line-height: 30px;
+            padding-left: 10px;
+    }
+
+    #right-panel select, #right-panel input {
+            font-size: 20px;
+    }
+
+    #right-panel select {
+             width: 100%;
+    }
+    #right-panel i {
+             font-size: 20px;
+    }
+    html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+    }
+    #right-panel {
+            float: right;
+            width: 28%;
+            padding-left: 2%;
+    }
+    #output {
+            font-size: 15x;
+    }
+
+<!--}}}-->
+  </style>
+
+  <script type="text/javascript" src="utils.js"> </script>
+
+</head>
+
+<body>
+
+  <script type="text/javascript" src="utils.js">
+    function initialize() {
+      var mapCenter = new google.maps.LatLng(37.615223, -122.389977);
+      var map = new google.maps.Map(document.getElementById('map'), {
+        zoom: 10,
+        center: mapCenter,
+        mapTypeId: 'terrain'
+      });
+
+      initMap();
+    }
+
+    initMap();
+
+    var myKey = "AIzaSyCgu_eNgt-Hiu0HAnZwkIWYcnUoLsGSqVs";
+
+    function loadScript() {
+      var script_gmap = document.createElement('script_gmap');
+      script_gmap.type = 'text/javascript';
+      script_gmap.src = "https://maps.googleapis.com/maps/api/js?key=" + myKey + "&sensor=false&callback=initialize";
+      document.body.appendChild(script_gmap);
+    }
+
+
+  </script>
+
+<!--{{{-->
+  <div id="right-panel">
+    <div id="inputs">
+      <pre>
+
+var pok_list = [
+['Dragonair', 37.5320567008, -122.19265261, 0],
+['Dragonair', 37.8986906754, -122.29733085, 1],
+['Dragonair', 37.8600646907, -122.485597556, 2],
+['Dragonair', 37.8067997243, -122.42385277, 3],
+      ];
+
+      </pre>
+    </div>
+    <div>
+      <strong>Results</strong>
+    </div>
+    <div id="output"></div>
+  </div>
+<!--}}}-->
+
+  <div id="map"></div>
+
+</body>
+</html>
