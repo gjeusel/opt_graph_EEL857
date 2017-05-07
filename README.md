@@ -37,3 +37,5 @@ See From line 217 to 246 for graph algos.
 <img src=results/table_score_order10.png width="800px" alt="table_score_dragonair-porygon" />
 <img src=results/screen_gmap_dragonair-porygon.png width="500px" alt="gmap_dragonair-porygon" />
 <!--3. For Graph Order = 12 (i.e. Dragonair & Charmeleon) :-->
+<img src=results/table_score_order12.png width="800px" alt="table_score_dragonair-charmeleon" />
+<img src=results/screen_gmap_dragonair-charmeleon.png width="500px" alt="gmap_dragonair-charmeleon" />
