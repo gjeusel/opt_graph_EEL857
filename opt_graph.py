@@ -346,37 +346,47 @@ def backtrack(G):
     return min_dist, opt_list_of_nodes
 
 
-# def dijkstra(G, i_node):
-#     num_nodes = G.order()-1
+def smallest_edge(G, idx_nodes_used, idx_node):
+    # idx_node is the index of the node considered in left_in_LoN
 
-#     K_star = nx.Graph()
-#     K_star.add_nodes_from(G.nodes())
-#     for k in G.nodes().delete(i_node):
-#         K_star.add_edge(i_node, k)
-#         K_
+    num_nodes = G.order()
+    min_dist = np.inf
+
+    for k in range(0, num_nodes):
+        if not(k in idx_nodes_used):
+            dist_tmp = G[idx_node][k]['weight']
+            if dist_tmp < min_dist:
+                min_dist = dist_tmp
+                idx_next_node = k
+
+    return idx_next_node, min_dist
 
 
-#     v = np.array(num_nodes)
-#     v = np.inf
-#     PI = np.array(num_nodes)
-#     PI = -1
+# Strategy used : always choose the shortest edge
+def heuristic(G, idx_first_node = 0):
+    num_nodes = G.order()-1
+    dist_path = 0
 
-#     left_in_LoN = G.nodes()
+    idx_nodes_used = [idx_first_node]
 
-#     num_nodes_left = len(left_in_LoN)
-#     while (num_nodes_left > 0):
-#         # Finding min of edges :
-#         min_edge_val = np.inf
-#         for i in range(0, num_nodes_left-1):
-#             for k in range(i+1, num_nodes_left):
-#                 min_edge_val_tmp = left_in_LoN
-#                 if (min_edge_val_tmp < min_edge_val):
-#                     min_edge_val = min_edge_val_tmp
-#                     min_edge = np.array(i,k)
+    idx_current_node = idx_first_node
+    while (len(idx_nodes_used)-1 < num_nodes):
 
-#         for v in G.neighbors(
-#     return K_star
+        # finding smallest edge :
+        idx_next_node, min_dist_edge = smallest_edge(G,
+                idx_nodes_used = idx_nodes_used,
+                idx_node = idx_current_node)
 
+        # Update values :
+        dist_path = dist_path + min_dist_edge
+        idx_nodes_used.append(idx_next_node)
+        idx_current_node = idx_next_node
+
+    # Add distance to make a cicle :
+    dist_path = dist_path + G[idx_first_node][idx_next_node]['weight']
+    idx_nodes_used.append(idx_first_node)
+
+    return dist_path, idx_nodes_used
 
 
 # Class wrappers for resolution methods :
@@ -484,16 +494,17 @@ class graphWrapper:
         # print "opt_LoN = ", opt_LoN
         self.df_scores.loc["backtrack_defby_rec"] = [total_time, min_dist, opt_LoN]
 
-    def dijkstra(self):
+    def heuristic(self):
+        print "Computing a Path with Heuristic ..."
         start_time = time.time()
         list_of_nodes = np.arange(self.G.order())
-        min_dist, opt_LoN = dijkstra(self.G)
+        min_dist, opt_LoN = heuristic(self.G)
         end_time = time.time()
         total_time = end_time - start_time
         # print "Execution time ----> Backtrack = ", total_time, " s"
         # print "min_dist = ", min_dist
         # print "opt_LoN = ", opt_LoN
-        self.df_scores.loc["backtrack_defby_rec"] = [total_time, min_dist, opt_LoN]
+        self.df_scores.loc["Heuristic"] = [total_time, min_dist, opt_LoN]
 
 
     def display_scores(self):
@@ -863,7 +874,7 @@ def main():
     Gwrap.brute_force()
     Gwrap.backtrack()
     Gwrap.backtrack_defby_rec()
-    # Gwrap.dijkstra()
+    Gwrap.heuristic()
 
     print Gwrap.df_scores
     fig, ax = Gwrap.display_scores()
