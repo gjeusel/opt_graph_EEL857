@@ -12,6 +12,9 @@ import matplotlib
 matplotlib.use("Qt4Agg") # enable plt.show() to display
 import matplotlib.pyplot as plt
 
+import logging as log
+import errno # cf error raised bu os.makedirs
+
 import pandas as pd
 import seaborn as sns
 
@@ -24,14 +27,29 @@ import networkx as nx
 
 import time
 
-_blue_color = '#40466e';
-_red_color = '#7b241b';
-_beige_color = '#ebcb92';
-_brown_color = '#905000';
+##############################################
+########      Global variables :      ########
+
+# Paths
+script_path = os.path.abspath(sys.argv[0])
+working_dir_path = os.path.dirname(script_path)
+default_csv_dir = working_dir_path+"/data/"
+
+# Cmap
+from matplotlib.colors import ListedColormap
+cmap_OrRd = ListedColormap(sns.color_palette("OrRd", 10).as_hex())
+cmap_RdYlBu = ListedColormap(sns.color_palette("RdYlBu", 10).as_hex())
+
+# Some colors
+color_green = sns.color_palette('GnBu', 10)[3]
+color_blue = sns.color_palette("PuBu", 10)[7]
+color_purple = sns.color_palette("PuBu", 10)[2]
+color_red = sns.color_palette("OrRd", 10)[6]
+##############################################
 
 
-# Function to compute dist from lat and lng :
 def compute_dist(lat1, lng1, lat2, lng2):
+    """ Compute distance in km from lats and lngs. """
 #{{{
     # cf http://www.movable-type.co.uk/scripts/latlong.html
     phi1 = math.radians(lat1)
@@ -51,13 +69,13 @@ def compute_dist(lat1, lng1, lat2, lng2):
 #}}}
 
 # Function to convert Dataframe in nice colored table :
-def render_mpl_table(data, col_width=4.0, row_height=0.625, font_size=14, #{{{
+def render_mpl_table(data, col_width=4.0, row_height=0.625, font_size=14,
                      header_color='#40466e', row_colors=['#f1f1f2', 'w'], edge_color='w',
                      bbox=[0.1, 0, 1, 1], header_columns=0,
                      ax=None, **kwargs):
-
-    from matplotlib.externals import six
-
+    """ <pandas.DataFrame> to nice table. """
+#{{{
+    import six
     if ax is None:
         size = (np.array(data.shape[::-1]) + np.array([0, 1])) * np.array([col_width, row_height])
         fig, ax = plt.subplots(figsize=size)
@@ -79,31 +97,38 @@ def render_mpl_table(data, col_width=4.0, row_height=0.625, font_size=14, #{{{
 #}}}
 
 
-####### CSV FILE FORMAT ######
-# Schema : s2_id,s2_token,num,name,lat,lng,encounter_ms,disppear_ms
-#     s2_id and s2_token reference Google's S2 spatial area library.
-#     num represents pokemon pokedex id
-#     encounter_ms represents time of scan
-#     disappear_ms represents time this encountered mon will despawn
-
-
-# A wrapper to simplify pokemons DataFrame management
-class DataTools:
+class wrapperDataFrame:
     """
-    - df : dataframe
-    - counts : df reduced to Pokemon | Count
-    - df_rarest : df reduced to only rarest pokemons
-    - pok_namelist_few : name of the pokemon studied
-    - df_few : df only one
+    - df : <pandas.DataFrame> of all pokemons in the csv
+        schema : ['s2_id', 's2_token', 'num', name', 'lat', 'lng',
+                      'encounter_ms', 'disppear_ms']
+
+    - pok_nml_few : <list of string> containing the pokemon names of interest
+    - df_few : <pandas.DataFrame> with only pokemons registers of interest
+
+    - df_counts (optionally computed) :
+        <pandas.DataFrame> of pokemons count
+        schema : ['Pokemon',  'Count']
+
+    - df_rarest (optionally computed) :
+        <pandas.DataFrame> reduced to a % of the rarest
     """
 
-#{{{ Methods of DataTools
-    def __init__(self, df_path="./data/pokemon-spawns.csv", pok_namelist=["Dragonair"]): #constructor
+    # s2_id and s2_token reference Google's S2 spatial area library.
+    # num represents pokemon pokedex id
+    # encounter_ms represents time of scan
+    # disappear_ms represents time this encountered mon will despawn
+
+#{{{ Methods of wrapperDataFrame
+
+    def __init__(self, df_path=default_csv_dir+"pokemon-spawns.csv",
+            pok_nml_few=["Dragonair"]): #constructor
+
         print "Reading csv ..."
         self.df = pd.read_csv(df_path)
 
-        self.pok_namelist_few = pok_namelist
-        print "Constructing df_few with : ", self.pok_namelist_few, "..."
+        self.pok_nml_few = pok_nml_few
+        print "Constructing df_few with : ", self.pok_nml_few, "..."
         self.construct_df_few()
 
         print "Removing spawns out of San Fransisco ..."
@@ -112,28 +137,24 @@ class DataTools:
         print "Removing spawns in double ..."
         self.clean_spawns_pos_doubles()
 
-
-    def construct_df_rarest(self, threshold=10):
-        print "Couting spawns ..."
-        self.counts = (self.df.groupby("name").size().to_frame().reset_index(level=0)
-              .rename(columns={0: "Count", "name": "Pokemon"}).sort_values(by="Count", ascending=False))
-
-        total_count = sum(self.counts.Count)
-        n_last_lines = int(self.counts.size*threshold/100)
-        counts_reduced = self.counts.tail(n_last_lines)
-
-        print "Constructing df_rarest ..."
-        self.df_rarest = self.df.loc[self.df["name"].isin(counts_reduced["Pokemon"])]
+    def __str__(self):
+        # print ".df.head() = \n",self.df.loc[:,"num":"lng"].head() , "\n"
+        # print ".df_counts.tail(10) = \n", self.df_counts.tail(10) , "\n"
+        # print ".df_rarest.head() = \n", self.df_rarest.loc[:,"num":"lng"].head() , "\n"
+        print ".df_few = \n", self.df_few.loc[:,"num":"lng"]
+        return("")
 
     def construct_df_few(self):
-        # lst_col = list(self.df)
-        # self.df_few = pd.DataFrame({lst_col : np.empty(len(lst_col))})
+#{{{
         self.df_few = pd.DataFrame()
-        for pok_name in self.pok_namelist_few:
-            self.df_few = pd.concat([self.df_few, self.df.loc[self.df.loc[:,"name"] == pok_name]])
+        for pok_name in self.pok_nml_few:
+            self.df_few = pd.concat( [self.df_few,
+                    self.df.loc[self.df.loc[:,"name"] == pok_name] ] )
+#}}}
 
     def clean_spawns_pos_doubles(self):
-        # Removing lines with same lat and lng
+        """ Remove registers with the same lat AND lnd"""
+#{{{
         i = 0 ; i_end = self.df_few.shape[0] ;
         k_end = self.df_few.shape[0] ;
         while (i < i_end):
@@ -149,9 +170,11 @@ class DataTools:
                 else:
                     k = k+1
             i = i+1
+#}}}
 
     def clean_outofSF(self):
-        # Removing lines with 36<lat<38 and -125<lng<-120
+        """ Keep only registers with 36<lat<38 and -125<lng<-120 """
+#{{{
         i = 0 ; i_end = self.df_few.shape[0] ;
         while (i < i_end):
             # print "i=",i"
@@ -169,68 +192,88 @@ class DataTools:
                 i_end = i_end - 1
             else:
                 i = i+1
+#}}}
 
     def add_adress(self, lat=37.754242, lng=-122.383602):
-        # Adress choosed by default : 24th St, San Francisco, CA 94107, États-Unis :
+        """ Add register at iloc 0 with your adress.
+            default : 24th St, San Francisco, CA 94107, États-Unis
+        """
+#{{{
         s2 = pd.Series(['0', 'my_adress', lat, lng], index=['num', 'name', 'lat', 'lng'])
         self.df_few.loc[-1] = s2
         self.df_few = self.df_few.sort_index()
         self.df_few = self.df_few.reset_index()
+#}}}
+
+
+    def construct_df_rarest(self, threshold=10):
+        """ Compute df_rarest with the threshold percents of the rarest. """
+#{{{
+
+        print "Couting spawns ..."
+        self.df_counts = (self.df.groupby("name").size().to_frame()
+                       .reset_index(level=0)
+                       .rename(columns={0: "Count", "name": "Pokemon"})
+                       .sort_values(by="Count", ascending=False))
+
+        total_count = sum(self.df_counts.Count)
+        n_last_lines = int(self.df_counts.size*threshold/100)
+        counts_reduced = self.df_counts.tail(n_last_lines)
+
+        print "Constructing df_rarest ..."
+        self.df_rarest = self.df.loc[self.df["name"].isin(counts_reduced["Pokemon"])]
+#}}}
 
     def plot_spawn_counts(self, ax):
+        """ barplot of df_rarest """
+#{{{
         # self argument needed, cf :
         # http://sametmax.com/quelques-erreurs-tordues-et-leurs-solutions-en-python/
-        ax = sns.barplot(x="Pokemon", y="Count", data=self.counts, palette="GnBu_d")
-        ax.set_title("Pokemon Spawn Counts in San Francisco")
+        ax = sns.barplot(x="Pokemon", y="Count", data=self.df_counts, palette="GnBu_d")
         ax.set_xlabel("Pokemon")
-        ax.set_xticklabels(self.counts["Pokemon"], rotation=90)
+        ax.set_xticklabels(self.df_counts["Pokemon"], rotation=90)
         ax.set_ylabel("Number of Spawns")
         return(ax)
+#}}}
 
-    def write_rarest_csv(path="./data/", threshold=10):
+    def write_rarest_csv(self, path="./data/", threshold=10):
+        """ df_rarest to csv with normalized filename. """
+#{{{
         full_path =  path + "pokemon-spawns-" + str(int(threshold*100)) + "%-rarest.csv"
-        print "Writting" + pathname + " ..."
-        self.df_rarest.to_csv(pathname, index=False)
-
-    def __str__(self):
-        # print ".df.head() = \n",self.df.loc[:,"num":"lng"].head() , "\n"
-        # print ".counts.tail(10) = \n", self.counts.tail(10) , "\n"
-        # print ".df_rarest.head() = \n", self.df_rarest.loc[:,"num":"lng"].head() , "\n"
-        print ".df_few = \n", self.df_few.loc[:,"num":"lng"]
-        return("")
-
-
-    # Wrappers for computing path methods :
-    def brute_force():
-        print "Computing Shortest Path with Brute Force ..."
-        start_time_BF = time.time()
-        min_dist_brute_force, opt_LoN_BF = brute_force(K)
-        end_time_BF = time.time()
-        total_time_BF = end_time_BF - start_time_BF
-        print "Execution time ----> Brute Force = ", total_time_BF, " s"
-        print "min_dist_brute_force = ", min_dist_brute_force
-        print "opt_LoN_BF = ", opt_LoN_BF
+        print "Writting" + full_path + " ..."
+        self.df_rarest.to_csv(full_path, index=False)
+#}}}
 
 #}}}
 
 
+
 ################################################################
 #
-#               Optimização de Grafos algorithms :
+#               Shortest Path algorithms :
 #
 ################################################################
 
 
-# Function to verify if a given path exists :
-# Note : it will always be the case with complete graph as there
 def verify_path(G, list_of_nodes):
+    """ Function to verify if a path exists in the ordered list_of_nodes.
+        Remark : it will always be the case with complete graph.
+        return : bool
+    """
+#{{{
     path_found=True
     for i in range(0,len(list_of_nodes)-1):
         if not list_of_nodes[i+1] in G.neighbors(list_of_nodes[i]):
             path_found=False
     return path_found
+#}}}
 
 def brute_force(G):
+    """ brute_force compute all combination of nodes path and get
+        the shortest.
+        Verification if the path exists from a list of nodes is used.
+    """
+#{{{
     min_dist = np.inf
     opt_list_of_nodes = []
     num_nodes = G.order() -1
@@ -257,7 +300,7 @@ def brute_force(G):
             min_dist = dist_tmp
 
     return min_dist, opt_list_of_nodes
-
+#}}}
 
 def swap(array, n1, n2):
     tmp = array[n1]
@@ -267,7 +310,15 @@ def swap(array, n1, n2):
 
 def backtrack_defby_rec(G, list_of_nodes, i_node=0, dist_tmp=0,
         min_dist=np.inf, opt_list_of_nodes=[]):
+    """ backtrack_defby_rec : backtrack using verify_path function
+        for solution viability, and already computed minimal dist
+        to check if valid solution.
 
+        It is a function defined by recurrency, so be carefull with
+        variables scoops.
+    """
+
+#{{{
     num_nodes = G.order()-1
 
     # print "----------------------------------------"
@@ -311,9 +362,13 @@ def backtrack_defby_rec(G, list_of_nodes, i_node=0, dist_tmp=0,
             list_of_nodes = swap(list_of_nodes, i_node+1, i)
 
     return(min_dist, opt_list_of_nodes)
-
+#}}}
 
 def backtrack(G):
+    """ backtrack : backtrack using verify_path function
+        for solution viability, and already computed minimal dist
+        to check if valid solution.
+    """
     min_dist = np.inf
     opt_list_of_nodes = []
     num_nodes = G.order() -1
@@ -393,19 +448,30 @@ def heuristic(G, idx_first_node = 0):
 class graphWrapper:
     """
     - G : NetworkX graph
-    - df_scores : datafram of scores and results obtained by shortest path algos
+        node_scheme = ['num', 'name', 'lat', 'lng']
+        edge : weight=dist, label=dist+"km"
+
+    - df_scores : <pandas.DataFrame> of execution time and results
+                  obtained by shortest path algos
+        schema = [ 'Algo', 'Execution Time [s]', 'Shortest Path [km]',
+                  'List of nodes ordered']
+
     """
 
 #{{{ Methods of graphWrapper
+
     def __init__(self, df): #constructor
         print "Constructing NetworkX Graph ..."
         self.df_to_nx_complete(df)
 
-        self.df_scores = pd.DataFrame(columns=['Execution Time [s]',\
+        # Initialize df_scores :
+        self.df_scores = pd.DataFrame(columns=['Execution Time [s]',
                 'Shortest Path [km]', 'List of nodes ordered'])
 
-    # Convert df to NetworkX Graph :
     def df_to_nx_complete(self, df):
+        """ Construct <networkx.classes.graph.Graph> from
+            <pandas.DataFrame> as a complete graph ('as the crow flies').
+        """
 #{{{
         n = df.shape[0]
         self.G = nx.complete_graph(0)
@@ -426,8 +492,9 @@ class graphWrapper:
                 self.G.add_edge(i, j, weight=dist, label=dist_trunc_str)
 #}}}
 
-    # print method of graphWrapper will result in a graph display
     def __str__(self):
+        """ print method of this class result in the bash cmd display of
+            an agraph saved as png. """
 #{{{
         # converting to Agraph :
         K_agraph = nx.nx_agraph.to_agraph(self.G)
@@ -459,77 +526,53 @@ class graphWrapper:
         # process.wait()
 #}}}
 
+    def wrapp_shortest_path(self, algo):
+        """ add a register to df_scores"""
+#{{{
+        algo_str = re.search('<function (.+?) at', str(algo)).group(1)
+        print "Computing Shortest Path with " + algo_str + " ..."
 
-    def brute_force(self):
-        print "Computing Shortest Path with Brute Force ..."
         start_time = time.time()
-        min_dist, opt_LoN = brute_force(self.G)
+        if algo_str == 'backtrack_defby_rec':
+            list_of_nodes = np.arange(self.G.order())
+            min_dist, opt_LoN = algo(self.G, list_of_nodes)
+        else:
+            min_dist, opt_LoN = algo(self.G)
         end_time = time.time()
         total_time = end_time - start_time
-        # print "Execution time ----> Brute Force = ", total_time, " s"
-        # print "min_dist = ", min_dist
-        # print "opt_LoN = ", opt_LoN
-        self.df_scores.loc["brute_force"] = [total_time, min_dist, opt_LoN]
+        self.df_scores.loc[algo_str] = [total_time, min_dist, opt_LoN]
+#}}}
 
-    def backtrack(self):
-        print "Computing Shortest Path with Backtrack ..."
-        start_time = time.time()
-        min_dist, opt_LoN = backtrack(self.G)
-        end_time = time.time()
-        total_time = end_time - start_time
-        # print "Execution time ----> Backtrack = ", total_time, " s"
-        # print "min_dist = ", min_dist
-        # print "opt_LoN = ", opt_LoN
-        self.df_scores.loc["backtrack"] = [total_time, min_dist, opt_LoN]
+    def compute_shortest_path(self, algo_nml=
+            [brute_force, backtrack, backtrack_defby_rec, heuristic]):
+        """ Compute Shortest Paths using algos in algo_nml. """
 
-    def backtrack_defby_rec(self):
-        print "Computing Shortest Path with Backtrack defined by recurrency ..."
-        start_time = time.time()
-        list_of_nodes = np.arange(self.G.order())
-        min_dist, opt_LoN = backtrack_defby_rec(self.G, list_of_nodes)
-        end_time = time.time()
-        total_time = end_time - start_time
-        # print "Execution time ----> Backtrack = ", total_time, " s"
-        # print "min_dist = ", min_dist
-        # print "opt_LoN = ", opt_LoN
-        self.df_scores.loc["backtrack_defby_rec"] = [total_time, min_dist, opt_LoN]
-
-    def heuristic(self):
-        print "Computing a Path with Heuristic ..."
-        start_time = time.time()
-        list_of_nodes = np.arange(self.G.order())
-        min_dist, opt_LoN = heuristic(self.G)
-        end_time = time.time()
-        total_time = end_time - start_time
-        # print "Execution time ----> Backtrack = ", total_time, " s"
-        # print "min_dist = ", min_dist
-        # print "opt_LoN = ", opt_LoN
-        self.df_scores.loc["Heuristic"] = [total_time, min_dist, opt_LoN]
-
+        for e in algo_nml:
+            self.wrapp_shortest_path(e)
 
     def display_scores(self):
-        fig, ax = render_mpl_table(self.df_scores, header_color=_brown_color,
+        fig, ax = render_mpl_table(self.df_scores, header_color=color_blue,
                               row_colors=['w', 'w'], edge_color='w')
         return fig, ax
 #}}}
 
 
 # Experimentation of vizualization using GoogleMap API :
-def write_pok_gmap_loc(poks, pathname="/home/gjeusel/projects/opt_graph/"): #{{{
+def write_pok_gmap_loc(dfs, pathname="/home/gjeusel/projects/opt_graph/"): #{{{
 
-    fout = pathname + '-'.join(poks.pok_namelist_few).lower() + "-locations.txt"
+    fout = pathname + '-'.join(dfs.pok_nml_few).lower() + "-locations.txt"
     print "Writting ", fout, " ..."
     f = open(fout, 'w')
 
-    for i in range(poks.df_few.shape[0]):
-        line = poks.df_few.iloc[i]
+    for i in range(dfs.df_few.shape[0]):
+        line = dfs.df_few.iloc[i]
         tmp = str(line["lat"]) + "," + str(line["lng"]) + "\n"
         # print tmp
         f.write(tmp)
 
     f.close()
 
-    fhtml = pathname + "gmap_" + '-'.join(poks.pok_namelist_few).lower() + ".html"
+    fhtml = pathname + "gmap_" + '-'.join(dfs.pok_nml_few).lower() + ".html"
     print "Writting ", fhtml, " ...\n"
     f = open(fhtml, 'w')
 
@@ -595,10 +638,10 @@ def write_pok_gmap_loc(poks, pathname="/home/gjeusel/projects/opt_graph/"): #{{{
 """)
 
     pok_list_str = "" + "var pok_list = [\n"
-    for i in range(0,poks.df_few.shape[0]):
-        tmp_str = "  ['" + str(poks.df_few.iloc[i].loc["name"]) + "', " \
-                + str(poks.df_few.iloc[i].loc["lat"]) + ", " \
-                + str(poks.df_few.iloc[i].loc["lng"]) + ", " \
+    for i in range(0,dfs.df_few.shape[0]):
+        tmp_str = "  ['" + str(dfs.df_few.iloc[i].loc["name"]) + "', " \
+                + str(dfs.df_few.iloc[i].loc["lat"]) + ", " \
+                + str(dfs.df_few.iloc[i].loc["lng"]) + ", " \
                 + str(i) + "],\n"
         pok_list_str = pok_list_str + tmp_str
     pok_list_str = pok_list_str + "        ];\n"
@@ -673,10 +716,10 @@ def write_pok_gmap_loc(poks, pathname="/home/gjeusel/projects/opt_graph/"): #{{{
 """)
 
     pok_list_str = "        " + "var pok_list = [\n"
-    for i in range(0,poks.df_few.shape[0]):
-        tmp_str = "            ['" + str(poks.df_few.iloc[i].loc["name"]) + "', " \
-                + str(poks.df_few.iloc[i].loc["lat"]) + ", " \
-                + str(poks.df_few.iloc[i].loc["lng"]) + ", " \
+    for i in range(0,dfs.df_few.shape[0]):
+        tmp_str = "            ['" + str(dfs.df_few.iloc[i].loc["name"]) + "', " \
+                + str(dfs.df_few.iloc[i].loc["lat"]) + ", " \
+                + str(dfs.df_few.iloc[i].loc["lng"]) + ", " \
                 + str(i) + "],\n"
         pok_list_str = pok_list_str + tmp_str
     pok_list_str = pok_list_str + "        ];\n"
@@ -813,17 +856,10 @@ def write_pok_gmap_loc(poks, pathname="/home/gjeusel/projects/opt_graph/"): #{{{
 #}}}
 
 
-
-def main():
-
-#{{{ Argument Parsing :
-    """Main program : opt_graph"""
-    parser = argparse.ArgumentParser(description='graph optimization study')
-
-    #ArgumentParser.add_argument(name or flags...[, action][, nargs][, const][, default][, type][, choices][, required][, help][, metavar][, dest])
-
-    # parser.add_argument('dataset', type=str, action='store',
-    #         metavar='<dataset_path>', help='dataset path')
+def setup_argparser():
+    """ Define and return the command argument parser. """
+#{{{
+    parser = argparse.ArgumentParser(description='''Graph Optimizatino Study.''')
 
     parser.add_argument('--show_counts', action='store_true', default=False, dest='show_counts',
             help='whether to run counts analysis or not')
@@ -836,52 +872,63 @@ def main():
             type=str, metavar="'Dragonair, Porygon, ...'",
             help="which pokemons to hunt in comma separated list ")
 
-    # parser.add_argument('--save_fig', action='store_true', default=False, dest='save_fig',
-    #         help='whether to save figures generated by --descr in png')
+    return parser
 #}}}
 
-    args = parser.parse_args()  # of type <class 'argparse.Namespace'>
+def main():
 
-    if (args.show_counts):
-        poks = DataTools()
-        poks.construct_df_rarest()
+    parser = setup_argparser()
+
+    try:
+        args = parser.parse_args()
+
+    except argparse.ArgumentError as exc:
+        log.exception('Error parsing options.')
+        parser.error(str(exc.message))
+        raise
+
+    if (args.show_counts): # will only compute count barplot
+        dfs = wrapperDataFrame()
+        dfs.construct_df_rarest()
         fig, ax = plt.subplots(figsize=(30, 30))
-        poks.plot_spawn_counts(ax)
+        dfs.plot_spawn_counts(ax)
         plt.show() # interactive plot
         return
 
+    # Convert from string to list of string
     poks_hunted_list = args.poks_hunted.split(",")
     poks_hunted_list = map(str.strip, poks_hunted_list)
-    poks = DataTools(pok_namelist=poks_hunted_list)
+    dfs = wrapperDataFrame(pok_nml_few = poks_hunted_list)
 
-    # poks = DataTools(pok_namelist=["Dragonair"])
-    # poks = DataTools(pok_namelist=["Dragonair", "Charmeleon"])
-    # poks = DataTools(pok_namelist=["Dragonair", "Porygon"])
+    # dfs.add_adress(lat=37.877875, lng=-122.305926)
+    dfs.add_adress(lat=args.adress[0], lng=args.adress[1])
 
-    # poks.add_adress(lat=37.877875, lng=-122.305926)
-    poks.add_adress(lat=args.adress[0], lng=args.adress[1])
-    write_pok_gmap_loc(poks)
+    # Generating html file :
+    write_pok_gmap_loc(dfs)
 
-    print poks
-    npoks = poks.df_few.shape[0]
+    print dfs
+    n_poks = dfs.df_few.shape[0]
 
-    Gwrap = graphWrapper(poks.df_few)
+    Gwrap = graphWrapper(dfs.df_few)
     # print Gwrap
 
     print "--------------------------------------------"
-    print "For Graph of n=", npoks
+    print "For Graph of n=", n_poks
 
-    Gwrap.brute_force()
-    Gwrap.backtrack()
-    Gwrap.backtrack_defby_rec()
-    Gwrap.heuristic()
+    # Gwrap.brute_force()
+    # Gwrap.backtrack()
+    # Gwrap.backtrack_defby_rec()
+    # Gwrap.heuristic()
+    # Gwrap.wrapp_shortest_path(brute_force)
+    Gwrap.compute_shortest_path()
 
     print Gwrap.df_scores
     fig, ax = Gwrap.display_scores()
-    fig.suptitle("Graph Order = " + str(npoks))
+    fig.suptitle("Graph Order = " + str(n_poks))
 
 
-    plt.show() # interactive plot
+    from IPython import embed; embed() # Enter Ipython
+    # plt.show() # interactive plot
 
 if __name__ == '__main__':
     main()
