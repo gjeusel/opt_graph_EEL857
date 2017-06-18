@@ -521,9 +521,9 @@ class graphWrapper:
         process.wait()
         print "Displaying graph process returncode = ", process.returncode
 
-        # command = "rm tmp.png tmp.dot"
-        # process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
-        # process.wait()
+        command = "rm tmp.png tmp.dot"
+        process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
+        process.wait()
 #}}}
 
     def wrapp_shortest_path(self, algo):
@@ -557,8 +557,10 @@ class graphWrapper:
 #}}}
 
 
-# Experimentation of vizualization using GoogleMap API :
-def write_pok_gmap_loc(dfs, pathname="/home/gjeusel/projects/opt_graph/"): #{{{
+def write_pok_gmap_loc(dfs,
+        pathname=working_dir_path+"/html_generated_by_python/"):
+    """ Experimentation of vizualization using GoogleMap API. """
+#{{{
 
     fout = pathname + '-'.join(dfs.pok_nml_few).lower() + "-locations.txt"
     print "Writting ", fout, " ..."

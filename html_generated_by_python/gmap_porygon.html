@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
+    <meta charset="utf-8">
+    <title>San Fransisco Rare Pokemons Hunt</title>
+    <style>
+      /* Always set the map height explicitly to define the size of the div
+       * element that contains the map. */
+      #map {
+         height: 100%;
+         width: 70%;
+      }
+      /* Optional: Makes the sample page fill the window. */
+      html, body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
+      #right-panel {
+              font-family: 'Roboto','sans-serif';
+              line-height: 30px;
+              padding-left: 10px;
+      }
+
+      #right-panel select, #right-panel input {
+              font-size: 20px;
+      }
+
+      #right-panel select {
+               width: 100%;
+      }
+      #right-panel i {
+               font-size: 20px;
+      }
+      html, body {
+              height: 100%;
+              margin: 0;
+              padding: 0;
+      }
+      #right-panel {
+              float: right;
+              width: 28%;
+              padding-left: 2%;
+      }
+      #output {
+              font-size: 15x;
+      }
+
+    </style>
+  </head>
+
+  <body>
+
+    <div id="right-panel">
+      <div id="inputs">
+        <pre>
+
+var pok_list = [
+  ['my_adress', 37.877875, -122.305926, 0],
+  ['Porygon', 37.7819282957, -122.415180818, 1],
+  ['Porygon', 37.7851652659, -122.395445035, 2],
+  ['Porygon', 37.5942393672, -122.384026681, 3],
+  ['Porygon', 37.37817663, -121.914820861, 4],
+  ['Porygon', 37.8416357212, -122.271724752, 5],
+        ];
+
+        </pre>
+      </div>
+      <div>
+        <strong>Results</strong>
+      </div>
+      <div id="output"></div>
+    </div>
+
+
+    <div id="map"></div>
+    <script>
+
+    function initMap() {
+        var map = new google.maps.Map(document.getElementById('map'), {
+        zoom: 10,
+        center: {lat: 37.615223, lng: -122.389977},
+        mapTypeId: 'terrain'
+        });
+
+        var dragonairImage = {
+           url: 'http://pre00.deviantart.net/73f7/th/pre/i/2013/024/f/5/dragonair_by_darkheroic-d5sizqi.png',
+           size: new google.maps.Size(70,70),
+           origin: new google.maps.Point(0, 0),
+           anchor: new google.maps.Point(0, 0),
+           scaledSize: new google.maps.Size(60, 60),
+           labelOrigin: new google.maps.Point(9, 8)
+        };
+
+        var homeImage = {
+           url: 'http://www.icone-png.com/png/54/53529.png',
+           size: new google.maps.Size(30,30),
+           origin: new google.maps.Point(0, 0),
+           anchor: new google.maps.Point(0, 0),
+           scaledSize: new google.maps.Size(30, 30),
+           labelOrigin: new google.maps.Point(-5, 8)
+        };
+
+        var charmeleonImage = {
+           url: 'http://pokemonbr.net/wp-content/uploads/2016/08/charmeleon.png',
+           size: new google.maps.Size(50,50),
+           origin: new google.maps.Point(0, 0),
+           anchor: new google.maps.Point(0, 0),
+           scaledSize: new google.maps.Size(50, 50),
+           labelOrigin: new google.maps.Point(-5, 8)
+        };
+
+        var porygonImage = {
+           url:'http://vignette2.wikia.nocookie.net/pokemon/images/3/3b/137Porygon_AG_anime.png/revision/latest?cb=20141006025936',
+           size: new google.maps.Size(50,50),
+           origin: new google.maps.Point(0, 0),
+           anchor: new google.maps.Point(0, 0),
+           scaledSize: new google.maps.Size(50, 50),
+           labelOrigin: new google.maps.Point(-5, 8)
+        };
+
+
+        // Shapes define the clickable region of the icon. The type defines an HTML
+        // <area> element 'poly' which traces out a polygon as a series of X,Y points.
+        // The final coordinate closes the poly by connecting to the first coordinate.
+        var shape = {
+            coords: [0, 0, 0, 50, 50, 50, 50, 0],
+            type: 'poly'
+        };
+
+        var pok_list = [
+            ['my_adress', 37.877875, -122.305926, 0],
+            ['Porygon', 37.7819282957, -122.415180818, 1],
+            ['Porygon', 37.7851652659, -122.395445035, 2],
+            ['Porygon', 37.5942393672, -122.384026681, 3],
+            ['Porygon', 37.37817663, -121.914820861, 4],
+            ['Porygon', 37.8416357212, -122.271724752, 5],
+        ];
+
+
+        // Markers :
+        for (var i = 0; i < pok_list.length; i++) {
+            var mark = pok_list[i];
+            if(mark[0]=="Dragonair"){
+               var icon = dragonairImage;
+            }
+            if(mark[0]=="Charmeleon"){
+                var icon = charmeleonImage;
+            }
+            if(mark[0]=="Porygon"){
+                var icon = porygonImage;
+            }
+            if(mark[0]=="my_adress"){
+                var icon = homeImage;
+            }
+            var marker = new google.maps.Marker({
+                position: {lat: mark[1], lng: mark[2]},
+                map: map,
+                icon: icon,
+                shape: shape,
+                title: mark[0] + " : " + mark[3],
+                zIndex: mark[3],
+                label: {
+                    text: i.toString(),
+                    fontWeight: 'bold',
+                    fontSize: '40px',
+                    fontFamily: '"Courier New", Courier,Monospace',
+                    color: 'black'
+                }
+            });
+        }
+
+
+        var bounds = new google.maps.LatLngBounds; // automate bounds
+        var dist = '';
+
+        var outputDiv = document.getElementById('output');
+        outputDiv.innerHTML = 'From ----> To ----> distance <br>';
+
+        // Distances :
+
+        function calcDistance(origin1,destinationB,ref_Callback_calcDistance, k, n){
+        var service = new google.maps.DistanceMatrixService();
+        var temp_duration = 0;
+        var temp_distance = 0;
+        var testres;
+        service.getDistanceMatrix(
+                {
+                origins: [origin1],
+                destinations: [destinationB],
+                travelMode: google.maps.TravelMode.DRIVING,
+                unitSystem: google.maps.UnitSystem.METRIC,
+                avoidHighways: false,
+                avoidTolls: false
+
+                }, function(response, status) {
+                if (status !== google.maps.DistanceMatrixStatus.OK) {
+                    alert('Error was: ' + status);
+                    testres= {"duration":0,"distance":0};
+
+                } else {
+                    var originList = response.originAddresses;
+                    var destinationList = response.destinationAddresses;
+                    var showGeocodedAddressOnMap = function (asDestination) {
+                        testres = function (results, status) {
+                          if (status === 'OK') {
+                            map.fitBounds(bounds.extend(results[0].geometry.location));
+                          } else {
+                            alert('Geocode was not successful due to: ' + status);
+                          }
+                        };
+                    };
+
+                    for (var i = 0; i < originList.length; i++) {
+                        var results = response.rows[i].elements;
+                        for (var j = 0; j < results.length; j++) {
+                            temp_duration+=results[j].duration.text;
+                            temp_distance+=results[j].distance.text;
+                        }
+                    }
+                        testres=[temp_duration,temp_distance];
+
+                        if(typeof ref_Callback_calcDistance === 'function'){
+                             //calling the callback function
+                            ref_Callback_calcDistance(testres, k, n)
+
+                        }
+                    }
+                }
+                );
+        }
+
+        function Callback_calcDistance(testres, k, n) {
+            dist = testres[1];
+            outputDiv.innerHTML += k + ' ----> ' + n + ' ----> ' + dist + '<br>'
+
+            console.log(testres[1]);
+        }
+
+        for (var k = 0; k < pok_list.length; k++) {
+            var origin = new google.maps.LatLng(pok_list[k][1], pok_list[k][2]);
+
+            for (var n = 0; n < pok_list.length; n++) {
+                if (n !== k) {
+                    var dest = new google.maps.LatLng(pok_list[n][1],pok_list[n][2]);
+
+                    //calling the calcDistance function and passing callback function reference
+                    calcDistance(origin, dest, Callback_calcDistance, k,n);
+                }
+            }
+        }
+
+    }
+
+    </script>
+
+    <script async defer
+      src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCgu_eNgt-Hiu0HAnZwkIWYcnUoLsGSqVs&callback=initMap">
+    </script>
+
+  </body>
+</html>
