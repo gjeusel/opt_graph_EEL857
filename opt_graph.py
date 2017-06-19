@@ -364,41 +364,88 @@ def backtrack_defby_rec(G, list_of_nodes, i_node=0, dist_tmp=0,
     return(min_dist, opt_list_of_nodes)
 #}}}
 
+def list_of_nodes_to_dist(G, list_of_nodes, min_dist):
+    dist = 0
+    loop_broken = False
+    for i in range(list_of_nodes.size-1):
+        dist = dist + G[list_of_nodes[i]][list_of_nodes[i+1]]['weight']
+        if dist > min_dist:
+            loop_broken = True
+            break
+
+    if loop_broken is True:
+        return(np.inf)
+    else:
+        return(dist)
+
 def backtrack(G):
     """ backtrack : backtrack using verify_path function
         for solution viability, and already computed minimal dist
         to check if valid solution.
     """
     min_dist = np.inf
-    opt_list_of_nodes = []
-    num_nodes = G.order() -1
+    num_nodes = G.order()
 
-    # Creating all permutations of [0, 1, 2, ..., n]
-    combinations = itertools.permutations(np.arange(G.order()))
+    list_of_nodes = np.arange(num_nodes)
+    list_of_nodes = np.append(list_of_nodes, 0)
 
-    for comb in combinations:
-        list_of_nodes = np.array(list(comb)) # change type to array
-        path_found = verify_path(G, list_of_nodes)
-        if path_found is False:
-            break
-        # print "list_of_nodes = ", list_of_nodes
+    opt_list_of_nodes = np.zeros(num_nodes + 1)
 
-        dist_tmp = 0
-        loop_broken = False
-        for i in range(0, num_nodes):
-            dist_tmp = dist_tmp + G[list_of_nodes[i]][list_of_nodes[i+1]]['weight']
-            if (dist_tmp > min_dist):
-                loop_broken = True
+    # Convention : must begin with 0 and end with 0 :
+    for i in range(1, num_nodes):
+        for j in range(1, num_nodes):
+            list_of_nodes = swap(list_of_nodes, i,j)
+            path_found = verify_path(G, list_of_nodes)
+            if path_found is False:
                 break
 
-        # Add distance to make a cicle :
-        dist_tmp = dist_tmp + G[list_of_nodes[num_nodes]][list_of_nodes[0]]['weight']
+            # Backtrack promisor's is included in the list_of_nodes_to_dist
+            # function that compute the distance from a list_of_nodes
+            dist = list_of_nodes_to_dist(G, list_of_nodes, min_dist)
 
-        if not(loop_broken) and (dist_tmp < min_dist) :
-            min_dist = dist_tmp
-            opt_list_of_nodes = np.append(list_of_nodes, 0)
+            if dist < min_dist:
+                min_dist = dist
+                opt_list_of_nodes = np.copy(list_of_nodes)
+
+            if (i<2) :
+                print list_of_nodes
+            if (i==2 and j==1):
+                print '--------------------'
+            if (i==2):
+                print list_of_nodes
+            list_of_nodes = swap(list_of_nodes, i,j)
+
+    from IPython import embed; embed() # Enter Ipython
 
     return min_dist, opt_list_of_nodes
+
+
+    # # Creating all permutations of [0, 1, 2, ..., n]
+    # combinations = itertools.permutations(np.arange(G.order()))
+
+    # for comb in combinations:
+    #     list_of_nodes = np.array(list(comb)) # change type to array
+    #     path_found = verify_path(G, list_of_nodes)
+    #     if path_found is False:
+    #         break
+    #     # print "list_of_nodes = ", list_of_nodes
+
+    #     dist_tmp = 0
+    #     loop_broken = False
+    #     for i in range(0, num_nodes):
+    #         dist_tmp = dist_tmp + G[list_of_nodes[i]][list_of_nodes[i+1]]['weight']
+    #         if (dist_tmp > min_dist):
+    #             loop_broken = True
+    #             break
+
+    #     # Add distance to make a cicle :
+    #     dist_tmp = dist_tmp + G[list_of_nodes[num_nodes]][list_of_nodes[0]]['weight']
+
+    #     if not(loop_broken) and (dist_tmp < min_dist) :
+    #         min_dist = dist_tmp
+    #         opt_list_of_nodes = np.append(list_of_nodes, 0)
+
+    # return min_dist, opt_list_of_nodes
 
 
 def smallest_edge(G, idx_nodes_used, idx_node):
@@ -917,12 +964,10 @@ def main():
     print "--------------------------------------------"
     print "For Graph of n=", n_poks
 
-    # Gwrap.brute_force()
-    # Gwrap.backtrack()
-    # Gwrap.backtrack_defby_rec()
-    # Gwrap.heuristic()
     # Gwrap.wrapp_shortest_path(brute_force)
-    Gwrap.compute_shortest_path()
+    # Gwrap.compute_shortest_path()
+    Gwrap.compute_shortest_path(algo_nml =
+            [backtrack, backtrack_defby_rec, heuristic])
 
     print Gwrap.df_scores
     fig, ax = Gwrap.display_scores()
