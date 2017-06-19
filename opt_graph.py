@@ -302,7 +302,7 @@ def brute_force(G):
             opt_list_of_nodes = np.append(list_of_nodes, 0)
             min_dist = dist_tmp
 
-    opt_list_of_nodes = opt_list_of_nodes
+    opt_list_of_nodes = list(opt_list_of_nodes)
     return min_dist, opt_list_of_nodes
 #}}}
 
@@ -448,8 +448,6 @@ def branch_and_bound(G):
     return min_dist, opt_list_of_nodes
 
 
-
-
 def smallest_edge(G, idx_nodes_used, idx_node):
     # idx_node is the index of the node considered in left_in_LoN
 
@@ -499,7 +497,7 @@ def heuristic_neighboors(G, idx_first_node = 0):
     dist = 0
 
     min_dist, opt_list_of_nodes = heuristic_shortest_edge(G)
-    list_of_nodes = opt_list_of_nodes #copy
+    list_of_nodes = list(opt_list_of_nodes) #copy
 
     for i in range(1, num_nodes):
         for j in [x for x in range(1, num_nodes) if x != i]:
@@ -513,7 +511,7 @@ def heuristic_neighboors(G, idx_first_node = 0):
 
             if dist < min_dist :
                 min_dist = dist
-                opt_list_of_nodes = list_of_nodes
+                opt_list_of_nodes = list(list_of_nodes) #copy
 
             list_of_nodes = swap(list_of_nodes, i,j)
 

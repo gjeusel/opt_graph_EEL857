@@ -43,18 +43,18 @@ A possible future work should be to request existings bicycle, cars [,...] paths
 ## Algorithms :
 
 ----
-### [Brute Force](https://github.com/gjeusel/opt_graph_EEL857/blob/master/opt_graph.py#L272)
+### [Brute Force](https://github.com/gjeusel/opt_graph_EEL857/blob/master/opt_graph.py#L274)
 
 ----
 ### Backtracks
-- [Defined with loops](https://github.com/gjeusel/opt_graph_EEL857/blob/master/opt_graph.py#L388)
-- [Defined by recurrence](https://github.com/gjeusel/opt_graph_EEL857/blob/master/opt_graph.py#L313)
+- [Defined with loops](https://github.com/gjeusel/opt_graph_EEL857/blob/master/opt_graph.py#L391)
+- [Defined by recurrence](https://github.com/gjeusel/opt_graph_EEL857/blob/master/opt_graph.py#L316)
 
 ----
-### [Heuristic greedy with shortest edge add](https://github.com/gjeusel/opt_graph_EEL857/blob/master/opt_graph.py#L437)
+### [Heuristic greedy with shortest edge add](https://github.com/gjeusel/opt_graph_EEL857/blob/master/opt_graph.py#L468)
 
 ----
-### [Heuristic neighboors]()
+### [Heuristic neighboors](https://github.com/gjeusel/opt_graph_EEL857/blob/master/opt_graph.py#L493)
 Improvement of previous heuristc with neighboors permutation checks.
 
 ----
