@@ -1,41 +1,82 @@
-[<img src="http://image.jeuxvideo.com/medias-md/149207/1492068501-5365-card.jpg" width="500px" alt="logo" />](https://github.com/gjeusel/opt_graph_EEL857)
+[<img src="http://image.jeuxvideo.com/medias-md/149207/1492068501-5365-card.jpg" width="400px" alt="logo" />](https://github.com/gjeusel/opt_graph_EEL857)
 
 # EEL857 Optimização em Grafos : [Luigi](http://www.cos.ufrj.br/~luidi/)
 
+Studying graph optimization algorithms for **NP-Hard** problem.
+
+**Usage** :
+> python opt_graph.py --help
+
+examples :
+> python opt_graph.py --poks_hunted 'Charmeleon, Dragonair'\
+> python opt_graph.py --adress [37.877875, -122.305926]
+
 ----
-## Purpose :
-Studying graph optimization algorithms for NP-Hard problem.
 
 ## Problem choosed :
-Shortest path between spawns of Pokemon in San Fransisco.
-Only rare pokemons will be considered.
-
+**Traveling Salesman** with spawns of rarest Pokemon in San Fransisco.\
 Exemple : Dragonair, Charmeleon, Porygon
 
-Database used : [Kaggle](https://www.kaggle.com/kveykva/sf-bay-area-pokemon-go-spawns)
+Database used : [Kaggle SF pokemon GO spawns](https://www.kaggle.com/kveykva/sf-bay-area-pokemon-go-spawns)\
+schema :
+| s2_id | s2_token | num | name | lat | lng | encounter_ms | disppear_ms |
+|-------|----------|-----|------|-----|-----|--------------|-------------|
+-9182942301737976000|808fa2a1473|148|Dragonair|37.5320567008|-122.19265261|1469526527404|1469525805045
+-9182942301737976000|808fa2a1473|148|Dragonair|37.5320567008|-122.19265261|1469526527404|1469525805453
+-9182960995583132000|808f91a0917|5|Charmeleon|37.6764960101|-122.110238578|1469527541628|1469527278982
+-9182960995583132000|808f91a0917|5|Charmeleon|37.6764960101|-122.110238578|1469527541628|1469527279064
+-9182960995583132000|808f91a0917|5|Charmeleon|37.6764960101|-122.110238578|1469527541628|1469527279228
+...
+
+- s2_id and s2_token reference Google's S2 spatial area library.
+- num represents pokemon pokedex id
+- encounter_ms represents time of scan
+- disappear_ms represents time this encountered mon will despawn
+
+**Simplification** : graphs that will be generated with ['lat', 'lng'] will be considered complete.\
+*As the crow flies* study.\
+A possible future work should be to request existings bicycle, cars [,...] paths to Google API and use them to build the graph
+
 
 ----
-## Usage :
-python opt_graph.py --help
 
-See From line 217 to 246 for graph algos.
-
-<!-------->
-<!--## Vizualization :-->
-<!--1. Vizualization using **agraph**, see graphWrapper.\_\_str\_\_ method:-->
-<!--<img src=results/agraph_example.png width="500px" alt="agraph_ex" />-->
-
-<!--2. Vizualization opening **html** file in browser (always generated):-->
-<!--<img src=results/screen_gmap_dragonair_example.png width="500px" alt="gmap_ex" />-->
+## Algorithms :
 
 ----
-## Results :
-1. For Graph Order = 5 (i.e. only Dragonair) :
-<img src=results/table_score_order5.png width="800px" alt="table_score_dragonair" />
+### [Brute Force](https://github.com/gjeusel/opt_graph_EEL857/blob/master/opt_graph.py#L272)
+
+----
+### Backtracks
+- [Defined with loops](https://github.com/gjeusel/opt_graph_EEL857/blob/master/opt_graph.py#L388)
+- [Defined by recurrence](https://github.com/gjeusel/opt_graph_EEL857/blob/master/opt_graph.py#L313)
+
+----
+### [Heuristic greedy with shortest edge add](https://github.com/gjeusel/opt_graph_EEL857/blob/master/opt_graph.py#L437)
+
+----
+### [Heuristic neighboors]()
+Improvement of previous heuristc with neighboors permutation checks.
+
+----
+
+# Results :
+
+## Dragonair
+<img src=results/table_score_n_poks_5.png width="800px" alt="table_score_dragonair" />
 <img src=results/screen_gmap_dragonair.png width="500px" alt="gmap_dragonair" />
-2. For Graph Order = 10 (i.e. Dragonair & Porygon) :
-<img src=results/table_score_order10.png width="800px" alt="table_score_dragonair-porygon" />
+
+## Porygon
+<img src=results/table_score_n_poks_6.png width="800px" alt="table_score_porygon" />
+<img src=results/screen_gmap_porygon.png width="500px" alt="gmap_porygon" />
+
+## Charmeleon
+<img src=results/table_score_n_poks_8.png width="800px" alt="table_score_charmeleon" />
+<img src=results/screen_gmap_charmeleon.png width="500px" alt="gmap_charmeleon" />
+
+## Dragonair and Porygon
+<img src=results/table_score_n_poks_10.png width="800px" alt="table_score_dragonair-porygon" />
 <img src=results/screen_gmap_dragonair-porygon.png width="500px" alt="gmap_dragonair-porygon" />
-<!--3. For Graph Order = 12 (i.e. Dragonair & Charmeleon) :-->
-<img src=results/table_score_order12.png width="800px" alt="table_score_dragonair-charmeleon" />
+
+## Dragonair and Charmeleon
+<img src=results/table_score_n_poks_12.png width="800px" alt="table_score_dragonair-charmeleon" />
 <img src=results/screen_gmap_dragonair-charmeleon.png width="500px" alt="gmap_dragonair-charmeleon" />

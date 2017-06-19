@@ -34,6 +34,8 @@ import time
 script_path = os.path.abspath(sys.argv[0])
 working_dir_path = os.path.dirname(script_path)
 default_csv_dir = working_dir_path+"/data/"
+default_result_dir = working_dir_path+"/results/"
+default_html_dir = working_dir_path+"/html_generated_by_python/"
 
 # Cmap
 from matplotlib.colors import ListedColormap
@@ -300,6 +302,7 @@ def brute_force(G):
             opt_list_of_nodes = np.append(list_of_nodes, 0)
             min_dist = dist_tmp
 
+    opt_list_of_nodes = opt_list_of_nodes
     return min_dist, opt_list_of_nodes
 #}}}
 
@@ -416,6 +419,36 @@ def backtrack(G):
     return min_dist, opt_list_of_nodes
 #}}}
 
+def branch_and_bound(G):
+    min_dist = np.inf
+    num_nodes = G.order()
+
+    list_of_nodes = []
+    opt_list_of_nodes = []
+
+    # Choice : subsets are possibles paths with second node already choosed
+    for i in np.arange(1,num_nodes):
+        perm_array = np.arange(1, num_nodes)
+        np.delete(perm_array, i)
+
+        for tuples in itertools.permutations(perm_array):
+            list_of_nodes = [0, i] + list(tuples) + [0]
+
+            path_found = verify_path(G, list_of_nodes)
+            if path_found is False:
+                break
+
+            # promissor inside list_of_nodes_to_dist function
+            dist = list_of_nodes_to_dist(G, list_of_nodes, min_dist)
+
+            if dist < min_dist:
+                min_dist = dist
+                opt_list_of_nodes = list_of_nodes
+
+    return min_dist, opt_list_of_nodes
+
+
+
 
 def smallest_edge(G, idx_nodes_used, idx_node):
     # idx_node is the index of the node considered in left_in_LoN
@@ -434,7 +467,7 @@ def smallest_edge(G, idx_nodes_used, idx_node):
 
 
 # Strategy used : always choose the shortest edge
-def heuristic(G, idx_first_node = 0):
+def heuristic_shortest_edge(G, idx_first_node = 0):
     num_nodes = G.order()-1
     dist_path = 0
 
@@ -458,6 +491,33 @@ def heuristic(G, idx_first_node = 0):
     idx_nodes_used.append(idx_first_node)
 
     return dist_path, idx_nodes_used
+
+def heuristic_neighboors(G, idx_first_node = 0):
+    """ Heuristic greedy with permutations tests in the neighbors. """
+
+    num_nodes = G.order()
+    dist = 0
+
+    min_dist, opt_list_of_nodes = heuristic_shortest_edge(G)
+    list_of_nodes = opt_list_of_nodes #copy
+
+    for i in range(1, num_nodes):
+        for j in [x for x in range(1, num_nodes) if x != i]:
+            list_of_nodes = swap(list_of_nodes, i,j)
+            path_found = verify_path(G, list_of_nodes)
+
+            if path_found is False:
+                break
+
+            dist = list_of_nodes_to_dist(G, list_of_nodes, min_dist)
+
+            if dist < min_dist :
+                min_dist = dist
+                opt_list_of_nodes = list_of_nodes
+
+            list_of_nodes = swap(list_of_nodes, i,j)
+
+    return(min_dist, opt_list_of_nodes)
 
 
 # Class wrappers for resolution methods :
@@ -561,7 +621,7 @@ class graphWrapper:
 #}}}
 
     def compute_shortest_path(self, algo_nml=
-            [brute_force, backtrack, backtrack_defby_rec, heuristic]):
+            [brute_force, backtrack, backtrack_defby_rec, heuristic_shortest_edge]):
         """ Compute Shortest Paths using algos in algo_nml. """
 
         for e in algo_nml:
@@ -883,7 +943,7 @@ def setup_argparser():
     parser.add_argument('--show_counts', action='store_true', default=False, dest='show_counts',
             help='whether to run counts analysis or not')
 
-    parser.add_argument('--adress', action='store', nargs=2, type=float,
+    parser.add_argument('--adress', action='store', nargs=1, type=float,
             default=[37.877875, -122.305926], dest='adress', metavar=['lat','lnt'],
             help='which latitude and longitude for Home Adress ')
 
@@ -893,6 +953,15 @@ def setup_argparser():
 
     return parser
 #}}}
+
+def setup_paths(list_of_paths):
+    """ Create defaults directories if needed. """
+    for p in list_of_paths:
+        try:
+            os.makedirs(p)
+        except OSError as exc: # Python >2.5
+            if exc.errno != errno.EEXIST:
+                raise
 
 def main():
 
@@ -905,6 +974,8 @@ def main():
         log.exception('Error parsing options.')
         parser.error(str(exc.message))
         raise
+
+    setup_paths([default_result_dir, default_html_dir])
 
     if (args.show_counts): # will only compute count barplot
         dfs = wrapperDataFrame()
@@ -939,15 +1010,20 @@ def main():
 
     # Preventing brute_force long computation :
     if n_poks < 7 :
-        algo_nml = [brute_force, backtrack, backtrack_defby_rec, heuristic]
+        algo_nml = [brute_force, backtrack, backtrack_defby_rec,
+                    heuristic_shortest_edge, heuristic_neighboors]
     else :
-        algo_nml = [backtrack, backtrack_defby_rec, heuristic]
+        algo_nml = [backtrack, backtrack_defby_rec,
+                    heuristic_shortest_edge, heuristic_neighboors]
 
     Gwrap.compute_shortest_path(algo_nml = algo_nml)
 
     print Gwrap.df_scores
     fig, ax = Gwrap.display_scores()
     fig.suptitle("Graph Order = " + str(n_poks))
+
+    filename = default_result_dir + "table_score_n_poks_" + str(n_poks)
+    plt.savefig(filename, bbox_inches='tight')
 
 
     # from IPython import embed; embed() # Enter Ipython
