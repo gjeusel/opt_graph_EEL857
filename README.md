@@ -18,7 +18,7 @@ examples :
 Exemple : Dragonair, Charmeleon, Porygon
 
 Database used : [Kaggle SF pokemon GO spawns](https://www.kaggle.com/kveykva/sf-bay-area-pokemon-go-spawns)\
-schema :
+schema :\
 | s2_id | s2_token | num | name | lat | lng | encounter_ms | disppear_ms |
 |-------|----------|-----|------|-----|-----|--------------|-------------|
 -9182942301737976000|808fa2a1473|148|Dragonair|37.5320567008|-122.19265261|1469526527404|1469525805045
