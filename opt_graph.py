@@ -278,31 +278,28 @@ def brute_force(G):
     """
 #{{{
     min_dist = np.inf
+    num_nodes = G.order()
+
+    list_of_nodes = []
     opt_list_of_nodes = []
-    num_nodes = G.order() -1
 
-    # Creating all permutations of [0, 1, 2, ..., n]
-    combinations = itertools.permutations(np.arange(G.order()))
+    perm_array = np.arange(1, num_nodes)
 
-    for comb in combinations:
-        list_of_nodes = np.array(list(comb)) # change type to array
+    for tuples in itertools.permutations(perm_array):
+        list_of_nodes = [0] + list(tuples) + [0]
+
         path_found = verify_path(G, list_of_nodes)
         if path_found is False:
             break
-        # print "list_of_nodes = ", list_of_nodes
 
-        dist_tmp = 0
-        for i in range(0, num_nodes):
-            dist_tmp = dist_tmp + G[list_of_nodes[i]][list_of_nodes[i+1]]['weight']
+        dist = 0
+        for i in range(len(list_of_nodes)-1):
+            dist = dist + G[list_of_nodes[i]][list_of_nodes[i+1]]['weight']
 
-        # Add distance to make a cicle :
-        dist_tmp = dist_tmp + G[list_of_nodes[num_nodes]][list_of_nodes[0]]['weight']
+        if (dist < min_dist):
+            opt_list_of_nodes = list(list_of_nodes)
+            min_dist = dist
 
-        if (dist_tmp < min_dist):
-            opt_list_of_nodes = np.append(list_of_nodes, 0)
-            min_dist = dist_tmp
-
-    opt_list_of_nodes = list(opt_list_of_nodes)
     return min_dist, opt_list_of_nodes
 #}}}
 
@@ -414,7 +411,7 @@ def backtrack(G):
 
         if dist < min_dist:
             min_dist = dist
-            opt_list_of_nodes = list_of_nodes
+            opt_list_of_nodes = list(list_of_nodes)
 
     return min_dist, opt_list_of_nodes
 #}}}
@@ -987,6 +984,7 @@ def main():
     poks_hunted_list = args.poks_hunted.split(",")
     poks_hunted_list = map(str.strip, poks_hunted_list)
     dfs = wrapperDataFrame(pok_nml_few = poks_hunted_list)
+    from IPython import embed; embed() # Enter Ipython
 
     # dfs.add_adress(lat=37.877875, lng=-122.305926)
     dfs.add_adress(lat=args.adress[0], lng=args.adress[1])
@@ -1007,12 +1005,15 @@ def main():
     # Gwrap.compute_shortest_path()
 
     # Preventing brute_force long computation :
-    if n_poks < 7 :
-        algo_nml = [brute_force, backtrack, backtrack_defby_rec,
-                    heuristic_shortest_edge, heuristic_neighboors]
-    else :
-        algo_nml = [backtrack, backtrack_defby_rec,
-                    heuristic_shortest_edge, heuristic_neighboors]
+    # if n_poks < 7 :
+    #     algo_nml = [brute_force, backtrack, backtrack_defby_rec,
+    #                 heuristic_shortest_edge, heuristic_neighboors]
+    # else :
+    #     algo_nml = [backtrack, backtrack_defby_rec,
+    #                 heuristic_shortest_edge, heuristic_neighboors]
+
+    algo_nml = [brute_force, backtrack, backtrack_defby_rec,
+                heuristic_shortest_edge, heuristic_neighboors]
 
     Gwrap.compute_shortest_path(algo_nml = algo_nml)
 
